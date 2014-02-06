@@ -16,6 +16,7 @@
 
 package com.android.internal.util.thewiz;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -24,6 +25,8 @@ import android.content.res.Resources;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.provider.Settings;
+import android.os.UserHandle;
 import android.util.Log;
 import com.android.internal.util.thewiz.ImageHelper;
 import com.android.internal.util.thewiz.ActionConstants;
@@ -38,6 +41,78 @@ public class ActionHelper {
     private static final String SYSTEM_METADATA_NAME = "android";
     private static final String SYSTEMUI_METADATA_NAME = "com.android.systemui";
     private static final String SETTINGS_METADATA_NAME = "com.android.settings";
+
+    // Get and set the pie configs from provider and return proper arraylist objects
+    // @ActionConfig
+    public static ArrayList<ActionConfig> getPieConfig(Context context) {
+        return (ConfigSplitHelper.getActionConfigValues(context,
+            getPieProvider(context), null, null, false));
+    }
+
+    public static ArrayList<ActionConfig> getPieConfigWithDescription(
+            Context context, String values, String entries) {
+        return (ConfigSplitHelper.getActionConfigValues(context,
+            getPieProvider(context), values, entries, false));
+    }
+
+    private static String getPieProvider(Context context) {
+        String config = Settings.System.getStringForUser(
+                    context.getContentResolver(),
+                    Settings.System.PIE_BUTTONS_CONFIG,
+                    UserHandle.USER_CURRENT);
+        if (config == null) {
+            config = ActionConstants.NAVIGATION_CONFIG_DEFAULT;
+        }
+        return config;
+    }
+
+    public static void setPieConfig(Context context,
+            ArrayList<ActionConfig> buttonsConfig, boolean reset) {
+        String config;
+        if (reset) {
+            config = ActionConstants.NAVIGATION_CONFIG_DEFAULT;
+        } else {
+            config = ConfigSplitHelper.setActionConfig(buttonsConfig, false);
+        }
+        Settings.System.putString(context.getContentResolver(),
+                    Settings.System.PIE_BUTTONS_CONFIG,
+                    config);
+    }
+
+    public static ArrayList<ActionConfig> getPieSecondLayerConfig(Context context) {
+        return (ConfigSplitHelper.getActionConfigValues(context,
+            getPieSecondLayerProvider(context), null, null, false));
+    }
+
+    public static ArrayList<ActionConfig> getPieSecondLayerConfigWithDescription(
+            Context context, String values, String entries) {
+        return (ConfigSplitHelper.getActionConfigValues(context,
+            getPieSecondLayerProvider(context), values, entries, false));
+    }
+
+    private static String getPieSecondLayerProvider(Context context) {
+        String config = Settings.System.getStringForUser(
+                    context.getContentResolver(),
+                    Settings.System.PIE_BUTTONS_CONFIG_SECOND_LAYER,
+                    UserHandle.USER_CURRENT);
+        if (config == null) {
+            config = ActionConstants.PIE_SECOND_LAYER_CONFIG_DEFAULT;
+        }
+        return config;
+    }
+
+    public static void setPieSecondLayerConfig(Context context,
+            ArrayList<ActionConfig> buttonsConfig, boolean reset) {
+        String config;
+        if (reset) {
+            config = ActionConstants.PIE_SECOND_LAYER_CONFIG_DEFAULT;
+        } else {
+            config = ConfigSplitHelper.setActionConfig(buttonsConfig, false);
+        }
+        Settings.System.putString(context.getContentResolver(),
+                    Settings.System.PIE_BUTTONS_CONFIG_SECOND_LAYER,
+                    config);
+    }
 
     // General methods to retrieve the correct icon for the respective action.
     public static Drawable getActionIconImage(Context context,
@@ -183,6 +258,12 @@ public class ActionHelper {
         } else if (clickAction.equals(ActionConstants.ACTION_SETTINGS_PANEL)) {
             resId = systemUiResources.getIdentifier(
                         SYSTEMUI_METADATA_NAME + ":drawable/ic_sysbar_quicksettings", null, null);
+        } else if (clickAction.equals(ActionConstants.ACTION_PIE)) {
+            resId = systemUiResources.getIdentifier(
+                        SYSTEMUI_METADATA_NAME + ":drawable/ic_sysbar_pie", null, null);
+        } else if (clickAction.equals(ActionConstants.ACTION_NAVBAR)) {
+            resId = systemUiResources.getIdentifier(
+                        SYSTEMUI_METADATA_NAME + ":drawable/ic_sysbar_navbar", null, null);
         } else if (clickAction.equals(ActionConstants.ACTION_SCREENSHOT)) {
             resId = systemUiResources.getIdentifier(
                         SYSTEMUI_METADATA_NAME + ":drawable/ic_sysbar_screenshot", null, null);

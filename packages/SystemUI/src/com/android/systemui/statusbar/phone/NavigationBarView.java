@@ -47,12 +47,15 @@ import android.widget.LinearLayout;
 import com.android.systemui.R;
 import com.android.systemui.RecentsComponent;
 import com.android.systemui.stackdivider.Divider;
+import com.android.systemui.statusbar.BaseStatusBar;
 import com.android.systemui.statusbar.policy.DeadZone;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
-public class NavigationBarView extends LinearLayout {
+public class NavigationBarView extends LinearLayout
+       implements BaseStatusBar.NavigationBarCallback {
+
     final static boolean DEBUG = false;
     final static String TAG = "PhoneStatusBar/NavigationBarView";
 
@@ -78,6 +81,9 @@ public class NavigationBarView extends LinearLayout {
     private Drawable mDockedIcon;
     private Drawable mImeIcon;
     private Drawable mMenuIcon;
+
+    private FrameLayout mRot0;
+    private FrameLayout mRot90;
 
     private NavigationBarGestureHelper mGestureHelper;
     private DeadZone mDeadZone;
@@ -304,6 +310,7 @@ public class NavigationBarView extends LinearLayout {
         setDisabledFlags(mDisabledFlags, true);
     }
 
+    @Override
     public void setNavigationIconHints(int hints) {
         setNavigationIconHints(hints, false);
     }
@@ -362,6 +369,7 @@ public class NavigationBarView extends LinearLayout {
         setDisabledFlags(mDisabledFlags, true);
     }
 
+    @Override
     public void setDisabledFlags(int disabledFlags) {
         setDisabledFlags(disabledFlags, false);
     }
@@ -474,6 +482,7 @@ public class NavigationBarView extends LinearLayout {
         }
     }
 
+    @Override
     public void setMenuVisibility(final boolean show) {
         setMenuVisibility(show, false);
     }
@@ -495,6 +504,9 @@ public class NavigationBarView extends LinearLayout {
         updateRotatedViews();
         ((NavigationBarInflaterView) findViewById(R.id.navigation_inflater)).setButtonDispatchers(
                 mButtonDisatchers);
+
+        mRot0 = (FrameLayout) findViewById(R.id.rot0);
+        mRot90 = (FrameLayout) findViewById(R.id.rot90);
 
         getImeSwitchButton().setOnClickListener(mImeSwitcherClickListener);
 
@@ -691,6 +703,15 @@ public class NavigationBarView extends LinearLayout {
                 return "GONE";
             default:
                 return "VISIBLE";
+        }
+    }
+
+    public void setForgroundColor(Drawable drawable) {
+        if (mRot0 != null) {
+            mRot0.setForeground(drawable);
+        }
+        if (mRot90 != null) {
+            mRot90.setForeground(drawable);
         }
     }
 

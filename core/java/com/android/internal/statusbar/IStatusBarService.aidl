@@ -69,6 +69,7 @@ interface IStatusBarService
     void remTile(in ComponentName tile);
     void clickTile(in ComponentName tile);
 
+    void setPieTriggerMask(int newMask, boolean lock);
     void showCustomIntentAfterKeyguard(inout Intent intent);
     void toggleRecentApps();
     void startAssist(in Bundle args);

@@ -65,6 +65,24 @@
     needs to be set to false, to prevent the doze notifications from being light -->
     <bool name="config_invert_colors_on_doze">true</bool>
 
+    <!-- status message in phone options dialog for when pie is on -->
+    <string name="global_actions_pie_mode_on_status">SlimPie is ON</string>
+
+    <!-- status message in phone options dialog for when pie is off -->
+    <string name="global_actions_pie_mode_off_status">SlimPie is OFF</string>
+
+    <!-- Error message if user want to try to disable all navigation options -->
+    <string name="disable_pie_navigation_error">You cannot disable pie controls. No other navigation is enabled. Enable first the navigation bar to turn off pie controls.</string>
+
+    <!-- status message in phone options dialog for when navigation bar is on -->
+    <string name="global_actions_nav_bar_mode_on_status">Navigation bar is ON</string>
+
+    <!-- status message in phone options dialog for when navigation bar is off -->
+    <string name="global_actions_nav_bar_mode_off_status">Navigation bar is OFF</string>
+
+    <!-- Error message if user want to try to disable all navigation options -->
+    <string name="disable_navigation_pie_error">You cannot disable the navigation bar. No other navigation is enabled. Enable first pie controls to turn off the navigation bar.</string>
+
     <!-- status message in phone options dialog for when AppCircleBar is on -->
     <string name="global_actions_appcirclebar_mode_on_status">AppCircleBar is ON</string>
     <!-- status message in phone options dialog for when AppCircleBar is off -->
@@ -80,6 +98,8 @@
     <!-- status message in phone options dialog for when pie is off -->
     <string name="global_actions_gesture_anywhere_mode_off_status">Gesture Anywhere is OFF</string>
 
+    <string name="global_actions_toggle_pie_mode">Pie control</string>
+    <string name="global_actions_toggle_nav_bar">Navigation bar</string>
     <string name="global_actions_toggle_appcirclebar_mode">AppCircleBar</string>
     <string name="global_actions_toggle_appsidebar_mode">AppSideBar</string>
     <string name="global_actions_toggle_gesture_anywhere_mode">Gesture Anywhere</string>

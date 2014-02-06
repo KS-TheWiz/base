@@ -113,6 +113,20 @@
   <java-symbol type="color" name="global_actions_ripple_color" />
   <java-symbol type="color" name="global_actions_text_color" />
 
+  <!-- Power Menu - Pie controls -->
+  <java-symbol type="string" name="global_actions_toggle_pie_mode" />
+  <java-symbol type="string" name="global_actions_pie_mode_on_status" />
+  <java-symbol type="string" name="global_actions_pie_mode_off_status" />
+  <java-symbol type="drawable" name="ic_lock_pie" />
+  <java-symbol type="string" name="disable_pie_navigation_error" />
+
+  <!-- Power Menu - Navigation bar -->
+  <java-symbol type="string" name="global_actions_toggle_nav_bar" />
+  <java-symbol type="string" name="global_actions_nav_bar_mode_on_status" />
+  <java-symbol type="string" name="global_actions_nav_bar_mode_off_status" />
+  <java-symbol type="drawable" name="ic_lock_navbar" />
+  <java-symbol type="string" name="disable_navigation_pie_error" />
+
   <!-- AppCircleBar controls -->
   <java-symbol type="string" name="global_actions_toggle_appcirclebar_mode" />
   <java-symbol type="string" name="global_actions_appcirclebar_mode_on_status" />

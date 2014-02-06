@@ -45,6 +45,7 @@ import android.graphics.drawable.RippleDrawable;
 import android.graphics.PorterDuff.Mode;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -120,6 +121,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     private Action mSilentModeAction;
     private ToggleAction mAirplaneModeOn;
     private ToggleAction mExpandedDesktopModeOn;
+    private ToggleAction mPieModeOn;
 
     private MyAdapter mAdapter;
 
@@ -127,6 +129,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     private boolean mDeviceProvisioned = false;
     private ToggleAction.State mAirplaneState = ToggleAction.State.Off;
     private ToggleAction.State mExpandedDesktopState = ToggleAction.State.Off;
+    private ToggleAction.State mPieState = ToggleAction.State.Off;
     private boolean mIsWaitingForEcmExit = false;
     private boolean mHasTelephony;
     private boolean mHasVibrator;
@@ -358,6 +361,9 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_EXPANDED_DESKTOP)) {
                 constructExpandedDesktopModeToggle();
                 mItems.add(mExpandedDesktopModeOn);
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_PIE)) {
+                constructPieToggle();
+                mItems.add(mPieModeOn);
             } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_SCREENSHOT)) {
                 mItems.add(getScreenshotAction());
             } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_SOUND) && mShowSilentToggle) {
@@ -683,6 +689,30 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         onExpandedDesktopModeChanged();
     }
 
+    private void constructPieToggle() {
+        mPieModeOn = new ToggleAction(
+                R.drawable.ic_lock_pie,
+                R.drawable.ic_lock_pie,
+                R.string.global_actions_toggle_pie_mode,
+                R.string.global_actions_pie_mode_on_status,
+                R.string.global_actions_pie_mode_off_status) {
+
+            void onToggle(boolean on) {
+                com.android.internal.util.thewiz.Action.processAction(
+                    mContext, PowerMenuConstants.ACTION_PIE, false);
+            }
+
+            public boolean showDuringKeyguard() {
+                return true;
+            }
+
+            public boolean showBeforeProvisioning() {
+                return false;
+            }
+        };
+        onPieModeChanged();
+    }
+
     private Action getScreenshotAction() {
         return new SinglePressAction(com.android.internal.R.drawable.ic_lock_screenshot,
                 R.string.global_action_screenshot) {
@@ -779,6 +809,14 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         if (mExpandedDesktopModeOn != null) {
             mExpandedDesktopModeOn.updateState(mExpandedDesktopState);
         }
+        if (mPieModeOn != null) {
+            mPieModeOn.updateState(mPieState);
+        }
+
+        // Start observing setting changes during
+        // dialog shows up
+        mSettingsObserver.observe();
+
         mAdapter.notifyDataSetChanged();
         mDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
         mDialog.setTitle(R.string.global_actions);
@@ -1308,6 +1346,30 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         }
     };
 
+    private SettingsObserver mSettingsObserver = new SettingsObserver(new Handler());
+    private final class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.PIE_CONTROLS), false, this,
+                    UserHandle.USER_ALL);
+        }
+
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            super.onChange(selfChange, uri);
+            if (uri.equals(Settings.System.getUriFor(
+                    Settings.System.PIE_CONTROLS))) {
+                onPieModeChanged();
+            }
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
     PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
         @Override
         public void onServiceStateChanged(ServiceState serviceState) {
@@ -1380,6 +1442,17 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         mExpandedDesktopState = expandedDesktopModeOn ? ToggleAction.State.On : ToggleAction.State.Off;
         if (mExpandedDesktopModeOn != null) {
             mExpandedDesktopModeOn.updateState(mExpandedDesktopState);
+        }
+    }
+
+    private void onPieModeChanged() {
+        boolean pieModeOn = Settings.System.getIntForUser(
+                mContext.getContentResolver(),
+                Settings.System.PIE_CONTROLS,
+                0, UserHandle.USER_CURRENT) == 1;
+        mPieState = pieModeOn ? ToggleAction.State.On : ToggleAction.State.Off;
+        if (mPieModeOn != null) {
+            mPieModeOn.updateState(mPieState);
         }
     }
 

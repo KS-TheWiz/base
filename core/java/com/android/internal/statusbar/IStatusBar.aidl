@@ -59,6 +59,7 @@ oneway interface IStatusBar
     void notificationLightOff();
     void notificationLightPulse(int argb, int millisOn, int millisOff);
 
+    void setPieTriggerMask(int newMask, boolean lock);
     void showRecentApps(boolean triggeredFromAltTab, boolean fromHome);
     void hideRecentApps(boolean triggeredFromAltTab, boolean triggeredFromHomeKey);
     void toggleRecentApps();

@@ -101,6 +101,9 @@ public class PowerMenuHelper {
         } else if (clickAction.equals(PowerMenuConstants.ACTION_SOUND)) {
             return res.getDrawable(
                 com.android.internal.R.drawable.ic_audio_ring_notif);
+        } else if (clickAction.equals(PowerMenuConstants.ACTION_PIE)) {
+            return res.getDrawable(
+                com.android.internal.R.drawable.ic_lock_pie);
         } else if (clickAction.equals(PowerMenuConstants.ACTION_APP_CIRCLE_BAR)) {
             return res.getDrawable(
                 com.android.internal.R.drawable.ic_lock_appcirclebar);
