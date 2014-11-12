@@ -77,4 +77,7 @@
         <item name="windowEnterAnimation">@anim/honami_toast_enter</item>
         <item name="windowExitAnimation">@anim/honami_toast_exit</item>
     </style>
+
+    <style name="Widget.GifView" parent="@android:style/Widget">
+    </style>
 </resources>

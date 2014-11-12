@@ -84,4 +84,9 @@
     <string name="global_actions_toggle_appsidebar_mode">AppSideBar</string>
     <string name="global_actions_toggle_gesture_anywhere_mode">Gesture Anywhere</string>
 
+    <!-- Setting confirmation dialog strings. Shown when any UI interaction can be modified by user input -->
+    <string name="setting_confirmation_ask_me_later">Ask later</string>
+    <string name="setting_confirmation_yes">Yes</string>
+    <string name="setting_confirmation_no">No</string>
+
 </resources>
