@@ -10810,6 +10810,12 @@ public class WindowManagerService extends IWindowManager.Stub
         mWindowPlacerLocked.requestTraversal();
     }
 
+    /* @hide */
+    @Override
+    public void toggleGlobalMenu() {
+        mPolicy.toggleGlobalMenu();
+    }
+
     @Override
     public Object getWindowManagerLock() {
         return mWindowMap;

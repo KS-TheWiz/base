@@ -17,6 +17,7 @@
 package com.android.internal.statusbar;
 
 import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.service.notification.StatusBarNotification;
@@ -41,6 +42,7 @@ interface IStatusBarService
     void setImeWindowStatus(in IBinder token, int vis, int backDisposition,
             boolean showImeSwitcher);
     void expandSettingsPanel(String subPanel);
+    void animateNotificationsOrSettingsPanel();
 
     // ---- Methods below are for use by the status bar policy services ----
     // You need the STATUS_BAR_SERVICE permission
@@ -66,4 +68,11 @@ interface IStatusBarService
     void addTile(in ComponentName tile);
     void remTile(in ComponentName tile);
     void clickTile(in ComponentName tile);
+
+    void showCustomIntentAfterKeyguard(inout Intent intent);
+    void toggleRecentApps();
+    void startAssist(in Bundle args);
+    void toggleScreenshot();
+    void toggleLastApp();
+    void toggleKillApp();
 }

@@ -589,4 +589,9 @@ public class IWindowManagerImpl implements IWindowManager {
 
     @Override
     public void removeWallpaperInputConsumer() throws RemoteException {}
+
+    /* @hide */
+    @Override
+    public void toggleGlobalMenu() {
+    }
 }

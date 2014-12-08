@@ -17,6 +17,7 @@
 package com.android.internal.statusbar;
 
 import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.service.notification.StatusBarNotification;
@@ -49,6 +50,7 @@ oneway interface IStatusBar
     void setSystemUiVisibility(int vis, int fullscreenStackVis, int dockedStackVis, int mask,
             in Rect fullscreenBounds, in Rect dockedBounds);
 
+    void animateNotificationsOrSettingsPanel();
     void topAppWindowChanged(boolean menuVisible);
     void setImeWindowStatus(in IBinder token, int vis, int backDisposition,
             boolean showImeSwitcher);
@@ -67,6 +69,7 @@ oneway interface IStatusBar
 
     void dismissKeyboardShortcutsMenu();
     void toggleKeyboardShortcutsMenu(int deviceId);
+    void showCustomIntentAfterKeyguard(inout Intent intent);
 
     /**
      * Notifies the status bar that an app transition is pending to delay applying some flags with
@@ -112,4 +115,7 @@ oneway interface IStatusBar
     void addQsTile(in ComponentName tile);
     void remQsTile(in ComponentName tile);
     void clickQsTile(in ComponentName tile);
+    void toggleScreenshot();
+    void toggleLastApp();
+    void toggleKillApp();
 }

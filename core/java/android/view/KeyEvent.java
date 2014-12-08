@@ -1853,6 +1853,7 @@ public class KeyEvent extends InputEvent implements Parcelable {
     /** @hide */
     public static final boolean isWakeKey(int keyCode) {
         switch (keyCode) {
+            case KeyEvent.KEYCODE_HOME:
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_WAKEUP:
@@ -1860,6 +1861,9 @@ public class KeyEvent extends InputEvent implements Parcelable {
             case KeyEvent.KEYCODE_STEM_1:
             case KeyEvent.KEYCODE_STEM_2:
             case KeyEvent.KEYCODE_STEM_3:
+            case KeyEvent.KEYCODE_VOLUME_UP:
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
                 return true;
         }
         return false;
