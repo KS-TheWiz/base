@@ -4133,6 +4133,12 @@ public final class Settings {
                 "volume_keys_control_media_stream";
 
         /**
+         * Toast icon
+         * @hide
+         */
+        public static final String TOAST_ICON = "toast_icon";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
