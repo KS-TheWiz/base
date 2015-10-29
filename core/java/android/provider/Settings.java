@@ -3419,6 +3419,12 @@ public final class Settings {
         public static final String DISABLE_IMMERSIVE_MESSAGE = "disable_immersive_message";
 
         /**
+         * Disable FC Notifications
+         * @hide
+         */
+        public static final String DISABLE_FC_NOTIFICATIONS = "disable_fc_notifications";
+
+        /**
          * @deprecated Use {@link android.provider.Settings.Global#POWER_SOUNDS_ENABLED}
          * instead
          * @hide
