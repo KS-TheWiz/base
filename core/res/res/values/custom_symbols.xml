@@ -194,5 +194,6 @@
   <java-symbol type="style" name="PowerMenuTopAnimation" />
   <java-symbol type="style" name="PowerMenuLeftAnimation" />
   <java-symbol type="style" name="PowerMenuRightAnimation" />
+  <java-symbol type="style" name="PowerMenuRotateAnimation" />
 
 </resources>

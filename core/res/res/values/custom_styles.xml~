@@ -40,19 +40,19 @@
     <!-- Power Menu Animation -->
     <style name="PowerMenuBottomAnimation">
         <item name="windowEnterAnimation">@anim/slide_in_up</item>
-        <item name="windowExitAnimation">@anim/slide_out_up</item>
+        <item name="windowExitAnimation">@anim/slide_out_down</item>
     </style>
     <style name="PowerMenuTopAnimation">
         <item name="windowEnterAnimation">@anim/slide_in_down</item>
-        <item name="windowExitAnimation">@anim/slide_out_down</item>
+        <item name="windowExitAnimation">@anim/slide_out_up</item>
     </style>
     <style name="PowerMenuLeftAnimation">
         <item name="windowEnterAnimation">@anim/slide_in_left</item>
-        <item name="windowExitAnimation">@anim/slide_out_right</item>
+        <item name="windowExitAnimation">@anim/slide_out_left</item>
     </style>
     <style name="PowerMenuRightAnimation">
         <item name="windowEnterAnimation">@anim/slide_in_right</item>
-        <item name="windowExitAnimation">@anim/slide_out_left</item>
+        <item name="windowExitAnimation">@anim/slide_out_right</item>
     </style>
     <style name="PowerMenuRotateAnimation">
         <item name="windowEnterAnimation">@anim/rotate</item>

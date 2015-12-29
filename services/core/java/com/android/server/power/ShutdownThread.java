@@ -286,11 +286,23 @@ public final class ShutdownThread extends Thread {
             }
             if (powermenuAnimations == 1) {
                 attrs.windowAnimations = R.style.PowerMenuBottomAnimation;
-                attrs.gravity = Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL;
+                attrs.gravity = Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL;
             }
             if (powermenuAnimations == 2) {
+                attrs.windowAnimations = R.style.PowerMenuLeftAnimation;
+                attrs.gravity = Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL;
+            }
+            if (powermenuAnimations == 3) {
+                attrs.windowAnimations = R.style.PowerMenuRightAnimation;
+                attrs.gravity = Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL;
+            }
+            if (powermenuAnimations == 4) {
+                attrs.windowAnimations = R.style.PowerMenuRotateAnimation;
+                attrs.gravity = Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL;
+            }
+            if (powermenuAnimations == 5) {
                 attrs.windowAnimations = R.style.PowerMenuTopAnimation;
-                attrs.gravity = Gravity.TOP|Gravity.CENTER_HORIZONTAL;
+                attrs.gravity = Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL;
             }
 
             sConfirmDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
