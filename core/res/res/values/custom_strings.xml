@@ -48,4 +48,7 @@
     <string name="silent_mode_priority">Priority</string>
     <string name="silent_mode_none">None</string>
 
+    <!-- Slimseekbar -->
+    <string name="default_string">Default</string>
+
 </resources>
