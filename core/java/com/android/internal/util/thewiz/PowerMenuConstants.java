@@ -32,6 +32,7 @@ public class PowerMenuConstants {
     public static final String ACTION_APP_CIRCLE_BAR       = "**appcirclebar**";
     public static final String ACTION_APP_SIDEBAR          = "**appsidebar**";
     public static final String ACTION_GESTURE_ANYWHERE     = "**gesture_anywhere**";
+    public static final String ACTION_TORCH                = "**torch**";
 
     // no action
     public static final String ACTION_NULL            = "**null**";
