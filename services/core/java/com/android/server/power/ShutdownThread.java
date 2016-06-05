@@ -52,6 +52,7 @@ import android.system.ErrnoException;
 import android.provider.Settings;
 import android.system.Os;
 
+import com.android.internal.util.ThemeUtils;
 import com.android.internal.telephony.ITelephony;
 import com.android.server.pm.PackageManagerService;
 
@@ -140,7 +141,7 @@ public final class ShutdownThread extends Thread {
         mReboot = false;
         mRebootSafeMode = false;
         mReason = reason;
-        shutdownInner(context, confirm);
+        shutdownInner(getUiContext(context), confirm);
     }
 
     static void shutdownInner(final Context context, boolean confirm) {
@@ -181,10 +182,9 @@ public final class ShutdownThread extends Thread {
 
         if (confirm) {
             final CloseDialogReceiver closer = new CloseDialogReceiver(context);
-            if (sConfirmDialog != null) {
-                sConfirmDialog.dismiss();
-                sConfirmDialog = null;
-            }
+            final Context mUiContext = getUiContext(context);
+            final boolean advancedReboot = isAdvancedRebootPossible(context);
+
             if (mReboot && !mRebootSafeMode) {
                 // Determine if primary user is logged in
                 boolean isPrimary = UserHandle.getCallingUserId() == UserHandle.USER_OWNER;
@@ -196,7 +196,7 @@ public final class ShutdownThread extends Thread {
 
                 if (advancedReboot && !locked) {
                     // Include options in power menu for rebooting into recovery or bootloader
-                    sConfirmDialog = new AlertDialog.Builder(context, AlertDialog.THEME_MATERIAL_DARK)
+                    sConfirmDialog = new AlertDialog.Builder(mUiContext, AlertDialog.THEME_MATERIAL_DARK)
                             .setTitle(titleResourceId)
                             .setSingleChoiceItems(com.android.internal.R.array.shutdown_reboot_options, 0, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
@@ -260,7 +260,7 @@ public final class ShutdownThread extends Thread {
             }
 
             if (sConfirmDialog == null) {
-                sConfirmDialog = new AlertDialog.Builder(context, AlertDialog.THEME_MATERIAL_DARK)
+                sConfirmDialog = new AlertDialog.Builder(mUiContext, AlertDialog.THEME_MATERIAL_DARK)
                         .setTitle(titleResourceId)
                         .setMessage(resourceId)
                         .setPositiveButton(com.android.internal.R.string.yes, new DialogInterface.OnClickListener() {
@@ -320,7 +320,7 @@ public final class ShutdownThread extends Thread {
         mRebootSafeMode = false;
         mRebootHasProgressBar = false;
         mReason = reason;
-        shutdownInner(context, confirm);
+        shutdownInner(getUiContext(context), confirm);
     }
 
     /**
@@ -824,5 +824,12 @@ public final class ShutdownThread extends Thread {
         if (!done[0]) {
             Log.w(TAG, "Timed out waiting for uncrypt.");
         }
+    }
+
+    private static Context getUiContext(Context context) {
+        Context mUiContext = null;
+        mUiContext = ThemeUtils.createUiContext(context);
+        mUiContext.setTheme(android.R.style.Theme_DeviceDefault_Light_DarkActionBar);
+        return mUiContext != null ? mUiContext : context;
     }
 }
