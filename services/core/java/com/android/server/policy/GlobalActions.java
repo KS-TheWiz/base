@@ -29,14 +29,19 @@ import android.app.ActivityManager;
 import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.INotificationManager;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.UserInfo;
+import android.content.res.ColorStateList;
 import android.database.ContentObserver;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.RippleDrawable;
+import android.graphics.PorterDuff.Mode;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.os.Build;
@@ -51,8 +56,10 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.provider.Settings.Global;
 import android.service.dreams.DreamService;
 import android.service.dreams.IDreamManager;
+import android.service.gesture.IEdgeGestureService;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
@@ -60,6 +67,7 @@ import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -78,6 +86,11 @@ import android.widget.ImageView.ScaleType;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.android.internal.util.thewiz.PowerMenuColorHelper;
+import com.android.internal.util.thewiz.PowerMenuConstants;
+import com.android.internal.util.thewiz.PowerMenuHelper;
+import com.android.internal.util.thewiz.ActionConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,40 +103,38 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
 
     private static final String TAG = "GlobalActions";
 
-    private static final boolean SHOW_SILENT_TOGGLE = true;
-
-    /* Valid settings for global actions keys.
-     * see config.xml config_globalActionList */
-    private static final String GLOBAL_ACTION_KEY_POWER = "power";
-    private static final String GLOBAL_ACTION_KEY_AIRPLANE = "airplane";
-    private static final String GLOBAL_ACTION_KEY_BUGREPORT = "bugreport";
-    private static final String GLOBAL_ACTION_KEY_SILENT = "silent";
-    private static final String GLOBAL_ACTION_KEY_USERS = "users";
-    private static final String GLOBAL_ACTION_KEY_SETTINGS = "settings";
-    private static final String GLOBAL_ACTION_KEY_LOCKDOWN = "lockdown";
-    private static final String GLOBAL_ACTION_KEY_VOICEASSIST = "voiceassist";
-    private static final String GLOBAL_ACTION_KEY_ASSIST = "assist";
+    public static final String ACTION_TOGGLE_GLOBAL_ACTIONS = "android.intent.action.TOGGLE_GLOBAL_ACTIONS";
 
     private final Context mContext;
     private final WindowManagerFuncs mWindowManagerFuncs;
     private final AudioManager mAudioManager;
     private final IDreamManager mDreamManager;
+    private IEdgeGestureService mEdgeGestureService;
+    private Object mServiceAquireLock = new Object();
 
     private ArrayList<Action> mItems;
     private GlobalActionsDialog mDialog;
 
     private Action mSilentModeAction;
     private ToggleAction mAirplaneModeOn;
+    private ToggleAction mExpandedDesktopModeOn;
 
     private MyAdapter mAdapter;
 
     private boolean mKeyguardShowing = false;
     private boolean mDeviceProvisioned = false;
     private ToggleAction.State mAirplaneState = ToggleAction.State.Off;
+    private ToggleAction.State mExpandedDesktopState = ToggleAction.State.Off;
     private boolean mIsWaitingForEcmExit = false;
     private boolean mHasTelephony;
     private boolean mHasVibrator;
     private final boolean mShowSilentToggle;
+
+    private static int mIconNormalColor;
+    private static int mIconEnabledSelectedColor;
+    private static int mRippleColor;
+    private static int mTextColor;
+    private static int mSecondaryTextColor;
 
     /**
      * @param context everything needs a context :(
@@ -140,6 +151,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
+        filter.addAction(ACTION_TOGGLE_GLOBAL_ACTIONS);
         context.registerReceiver(mBroadcastReceiver, filter);
 
         ConnectivityManager cm = (ConnectivityManager)
@@ -156,7 +168,8 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         Vibrator vibrator = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
         mHasVibrator = vibrator != null && vibrator.hasVibrator();
 
-        mShowSilentToggle = SHOW_SILENT_TOGGLE && !mContext.getResources().getBoolean(
+        // TODO check zen mode?
+        mShowSilentToggle = !mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_useFixedVolume);
     }
 
@@ -170,9 +183,13 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         if (mDialog != null) {
             mDialog.dismiss();
             mDialog = null;
+            updateColors();
+            mDialog = createDialog();
             // Show delayed, so that the dismiss of the previous dialog completes
             mHandler.sendEmptyMessage(MESSAGE_SHOW);
         } else {
+            updateColors();
+            mDialog = createDialog();
             handleShow();
         }
     }
@@ -189,23 +206,59 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         }
     }
 
+    private void updateColors() {
+        mIconNormalColor = PowerMenuColorHelper.getIconNormalColor(mContext);
+        mIconEnabledSelectedColor = PowerMenuColorHelper.getIconEnabledSelectedColor(mContext);
+        mRippleColor = PowerMenuColorHelper.getRippleColor(mContext);
+        mTextColor = PowerMenuColorHelper.getTextColor(mContext);
+        mSecondaryTextColor = (179 << 24) | (mTextColor & 0x00ffffff);
+    }
+
+    private static void setButtonRippleColor(Context context, View v) {
+        RippleDrawable rd = (RippleDrawable) context.getDrawable(
+                R.drawable.global_actions_button_bg);
+
+        int states[][] = new int[][] {
+            new int[] {
+                com.android.internal.R.attr.state_enabled
+            }
+        };
+        int colors[] = new int[] {
+            mRippleColor
+        };
+        ColorStateList color = new ColorStateList(states, colors);
+
+        rd.setColor(color);
+        v.setBackground(rd);
+    }
+
+    private static void setSilentModeItemRippleColor(Context context, View v) {
+        RippleDrawable rd = (RippleDrawable) context.getDrawable(
+                R.drawable.global_actions_silent_mode_item_bg);
+
+        int states[][] = new int[][] {
+            new int[] {
+                com.android.internal.R.attr.state_enabled
+            }
+        };
+        int colors[] = new int[] {
+            mRippleColor
+        };
+        ColorStateList color = new ColorStateList(states, colors);
+
+        rd.setColor(color);
+        v.setBackground(rd);
+    }
+
     private void handleShow() {
         awakenIfNecessary();
-        mDialog = createDialog();
         prepareDialog();
 
-        // If we only have 1 item and it's a simple press action, just do this action.
-        if (mAdapter.getCount() == 1
-                && mAdapter.getItem(0) instanceof SinglePressAction
-                && !(mAdapter.getItem(0) instanceof LongPressAction)) {
-            ((SinglePressAction) mAdapter.getItem(0)).onPress();
-        } else {
-            WindowManager.LayoutParams attrs = mDialog.getWindow().getAttributes();
-            attrs.setTitle("GlobalActions");
-            mDialog.getWindow().setAttributes(attrs);
-            mDialog.show();
-            mDialog.getWindow().getDecorView().setSystemUiVisibility(View.STATUS_BAR_DISABLE_EXPAND);
-        }
+        WindowManager.LayoutParams attrs = mDialog.getWindow().getAttributes();
+        attrs.setTitle("GlobalActions");
+        mDialog.getWindow().setAttributes(attrs);
+        mDialog.show();
+        mDialog.getWindow().getDecorView().setSystemUiVisibility(View.STATUS_BAR_DISABLE_EXPAND);
     }
 
     /**
@@ -213,12 +266,127 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
      * @return A new dialog.
      */
     private GlobalActionsDialog createDialog() {
-        // Simple toggle style if there's no vibrator, otherwise use a tri-state
-        if (!mHasVibrator) {
-            mSilentModeAction = new SilentModeToggleAction();
-        } else {
-            mSilentModeAction = new SilentModeTriStateAction(mContext, mAudioManager, mHandler);
+        mSilentModeAction = new SilentModeTriStateAction(mContext, mAudioManager, mHandler);
+        ArrayList<ActionConfig> powerMenuConfig =
+                PowerMenuHelper.getPowerMenuConfig(mContext);
+
+        mItems = new ArrayList<Action>();
+
+        for (final ActionConfig config : powerMenuConfig) {
+            if (config.getClickAction().equals(PowerMenuConstants.ACTION_POWER_OFF)) {
+                mItems.add(getPowerAction());
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_REBOOT)) {
+                mItems.add(new RebootAction());
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_AIRPLANE)) {
+                constructAirPlaneModeToggle();
+                mItems.add(mAirplaneModeOn);
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_USERS)) {
+                addUsersToMenu(mItems);
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_SYSTEM_SETTINGS)) {
+                mItems.add(getSettingsAction());
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_LOCK_DOWN)) {
+                mItems.add(getLockdownAction());
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_EXPANDED_DESKTOP)) {
+                constructExpandedDesktopModeToggle();
+                mItems.add(mExpandedDesktopModeOn);
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_SCREENSHOT)) {
+                mItems.add(getScreenshotAction());
+            } else if (config.getClickAction().equals(PowerMenuConstants.ACTION_SOUND) && mShowSilentToggle) {
+                if (!mHasVibrator) {
+                    mSilentModeAction = new SilentModeToggleAction();
+                } else {
+                    mSilentModeAction = new SilentModeTriStateAction(mContext, mAudioManager, mHandler);
+                }
+                mItems.add(mSilentModeAction);
+            }
         }
+
+        mAdapter = new MyAdapter();
+
+        AlertParams params = new AlertParams(mContext);
+        params.mAdapter = mAdapter;
+        params.mOnClickListener = this;
+        params.mForceInverseBackground = true;
+
+        GlobalActionsDialog dialog = new GlobalActionsDialog(mContext, params);
+        dialog.setCanceledOnTouchOutside(false); // Handled by the custom class.
+
+        dialog.getListView().setItemsCanFocus(true);
+        dialog.getListView().setLongClickable(true);
+        dialog.getListView().setOnItemLongClickListener(
+                new AdapterView.OnItemLongClickListener() {
+                    @Override
+                    public boolean onItemLongClick(AdapterView<?> parent, View view, int position,
+                            long id) {
+                        final Action action = mAdapter.getItem(position);
+                        if (action instanceof LongPressAction) {
+                            return ((LongPressAction) action).onLongPress();
+                        }
+                        return false;
+                    }
+        });
+        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
+
+        dialog.setOnDismissListener(this);
+
+        return dialog;
+    }
+
+    private Action getPowerAction() {
+        return new SinglePressAction(com.android.internal.R.drawable.ic_lock_power_off,
+                R.string.global_action_power_off) {
+
+            @Override
+            public void onPress() {
+            // shutdown by making sure radio and power are handled accordingly.
+            mWindowManagerFuncs.shutdown(false /* confirm */);
+            }
+
+            @Override
+            public boolean showDuringKeyguard() {
+                return true;
+            }
+
+            @Override
+            public boolean showBeforeProvisioning() {
+                return true;
+            }
+        };
+    }
+
+    private final class RebootAction extends SinglePressAction implements LongPressAction {
+        private RebootAction() {
+            super(com.android.internal.R.drawable.ic_lock_reboot,
+                R.string.global_action_reboot);
+        }
+
+        @Override
+        public void onPress() {
+            mWindowManagerFuncs.reboot();
+        }
+
+        @Override
+        public boolean onLongPress() {
+            UserManager um = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+            if (!um.hasUserRestriction(UserManager.DISALLOW_SAFE_BOOT)) {
+                mWindowManagerFuncs.rebootSafeMode(true);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean showDuringKeyguard() {
+            return true;
+        }
+
+        @Override
+        public boolean showBeforeProvisioning() {
+            return true;
+        }
+    }
+
+    private void constructAirPlaneModeToggle() {
         mAirplaneModeOn = new ToggleAction(
                 R.drawable.ic_lock_airplane_mode,
                 R.drawable.ic_lock_airplane_mode_off,
@@ -261,112 +429,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             }
         };
         onAirplaneModeChanged();
-
-        mItems = new ArrayList<Action>();
-        String[] defaultActions = mContext.getResources().getStringArray(
-                com.android.internal.R.array.config_globalActionsList);
-
-        ArraySet<String> addedKeys = new ArraySet<String>();
-        for (int i = 0; i < defaultActions.length; i++) {
-            String actionKey = defaultActions[i];
-            if (addedKeys.contains(actionKey)) {
-                // If we already have added this, don't add it again.
-                continue;
-            }
-            if (GLOBAL_ACTION_KEY_POWER.equals(actionKey)) {
-                mItems.add(new PowerAction());
-            } else if (GLOBAL_ACTION_KEY_AIRPLANE.equals(actionKey)) {
-                mItems.add(mAirplaneModeOn);
-            } else if (GLOBAL_ACTION_KEY_BUGREPORT.equals(actionKey)) {
-                if (Settings.Global.getInt(mContext.getContentResolver(),
-                        Settings.Global.BUGREPORT_IN_POWER_MENU, 0) != 0 && isCurrentUserOwner()) {
-                    mItems.add(new BugReportAction());
-                }
-            } else if (GLOBAL_ACTION_KEY_SILENT.equals(actionKey)) {
-                if (mShowSilentToggle) {
-                    mItems.add(mSilentModeAction);
-                }
-            } else if (GLOBAL_ACTION_KEY_USERS.equals(actionKey)) {
-                if (SystemProperties.getBoolean("fw.power_user_switcher", false)) {
-                    addUsersToMenu(mItems);
-                }
-            } else if (GLOBAL_ACTION_KEY_SETTINGS.equals(actionKey)) {
-                mItems.add(getSettingsAction());
-            } else if (GLOBAL_ACTION_KEY_LOCKDOWN.equals(actionKey)) {
-                mItems.add(getLockdownAction());
-            } else if (GLOBAL_ACTION_KEY_VOICEASSIST.equals(actionKey)) {
-                mItems.add(getVoiceAssistAction());
-            } else if (GLOBAL_ACTION_KEY_ASSIST.equals(actionKey)) {
-                mItems.add(getAssistAction());
-            } else {
-                Log.e(TAG, "Invalid global action key " + actionKey);
-            }
-            // Add here so we don't add more than one.
-            addedKeys.add(actionKey);
-        }
-
-        mAdapter = new MyAdapter();
-
-        AlertParams params = new AlertParams(mContext);
-        params.mAdapter = mAdapter;
-        params.mOnClickListener = this;
-        params.mForceInverseBackground = true;
-
-        GlobalActionsDialog dialog = new GlobalActionsDialog(mContext, params);
-        dialog.setCanceledOnTouchOutside(false); // Handled by the custom class.
-
-        dialog.getListView().setItemsCanFocus(true);
-        dialog.getListView().setLongClickable(true);
-        dialog.getListView().setOnItemLongClickListener(
-                new AdapterView.OnItemLongClickListener() {
-                    @Override
-                    public boolean onItemLongClick(AdapterView<?> parent, View view, int position,
-                            long id) {
-                        final Action action = mAdapter.getItem(position);
-                        if (action instanceof LongPressAction) {
-                            return ((LongPressAction) action).onLongPress();
-                        }
-                        return false;
-                    }
-        });
-        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
-
-        dialog.setOnDismissListener(this);
-
-        return dialog;
-    }
-
-    private final class PowerAction extends SinglePressAction implements LongPressAction {
-        private PowerAction() {
-            super(com.android.internal.R.drawable.ic_lock_power_off,
-                R.string.global_action_power_off);
-        }
-
-        @Override
-        public boolean onLongPress() {
-            UserManager um = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
-            if (!um.hasUserRestriction(UserManager.DISALLOW_SAFE_BOOT)) {
-                mWindowManagerFuncs.rebootSafeMode(true);
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public boolean showDuringKeyguard() {
-            return true;
-        }
-
-        @Override
-        public boolean showBeforeProvisioning() {
-            return true;
-        }
-
-        @Override
-        public void onPress() {
-            // shutdown by making sure radio and power are handled accordingly.
-            mWindowManagerFuncs.shutdown(false /* confirm */);
-        }
     }
 
     private class BugReportAction extends SinglePressAction implements LongPressAction {
@@ -528,6 +590,52 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         };
     }
 
+    private void constructExpandedDesktopModeToggle() {
+        mExpandedDesktopModeOn = new ToggleAction(
+                R.drawable.ic_lock_expanded_desktop,
+                R.drawable.ic_lock_expanded_desktop,
+                R.string.global_actions_toggle_expanded_desktop_mode,
+                R.string.global_actions_expanded_desktop_mode_on_status,
+                R.string.global_actions_expanded_desktop_mode_off_status) {
+
+            void onToggle(boolean on) {
+                com.android.internal.util.thewiz.Action.processAction(
+                    mContext, PowerMenuConstants.ACTION_EXPANDED_DESKTOP, false);
+            }
+
+            public boolean showDuringKeyguard() {
+                return true;
+            }
+
+            public boolean showBeforeProvisioning() {
+                return false;
+            }
+        };
+        onExpandedDesktopModeChanged();
+    }
+
+    private Action getScreenshotAction() {
+        return new SinglePressAction(com.android.internal.R.drawable.ic_lock_screenshot,
+                R.string.global_action_screenshot) {
+
+            @Override
+            public void onPress() {
+                com.android.internal.util.thewiz.Action.processAction(
+                        mContext, PowerMenuConstants.ACTION_SCREENSHOT, false);
+            }
+
+            @Override
+            public boolean showDuringKeyguard() {
+                return true;
+            }
+
+            @Override
+            public boolean showBeforeProvisioning() {
+                return true;
+            }
+        };
+    }
+
     private UserInfo getCurrentUser() {
         try {
             return ActivityManagerNative.getDefault().getCurrentUser();
@@ -579,23 +687,32 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     }
 
     private void prepareDialog() {
-        refreshSilentMode();
-        mAirplaneModeOn.updateState(mAirplaneState);
+        if (mSilentModeAction != null) {
+            if (mShowSilentToggle) {
+                IntentFilter filter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
+                mContext.registerReceiver(mRingerModeReceiver, filter);
+            }
+        }
+
+        // Global menu is showing. Notify EdgeGestureService.
+        IEdgeGestureService edgeGestureService = getEdgeGestureService();
+        try {
+            if (edgeGestureService != null) {
+                edgeGestureService.setOverwriteImeIsActive(true);
+            }
+        } catch (RemoteException e) {
+             mEdgeGestureService = null;
+        }
+
+        if (mAirplaneModeOn != null) {
+            mAirplaneModeOn.updateState(mAirplaneState);
+        }
+        if (mExpandedDesktopModeOn != null) {
+            mExpandedDesktopModeOn.updateState(mExpandedDesktopState);
+        }
         mAdapter.notifyDataSetChanged();
         mDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
-        if (mShowSilentToggle) {
-            IntentFilter filter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
-            mContext.registerReceiver(mRingerModeReceiver, filter);
-        }
-    }
-
-    private void refreshSilentMode() {
-        if (!mHasVibrator) {
-            final boolean silentModeOn =
-                    mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;
-            ((ToggleAction)mSilentModeAction).updateState(
-                    silentModeOn ? ToggleAction.State.On : ToggleAction.State.Off);
-        }
+        mDialog.setTitle(R.string.global_actions);
     }
 
     /** {@inheritDoc} */
@@ -608,13 +725,19 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 Log.w(TAG, ie);
             }
         }
+        // Global menu dismiss. Notify EdgeGestureService.
+        IEdgeGestureService edgeGestureService = getEdgeGestureService();
+        try {
+            if (edgeGestureService != null) {
+                edgeGestureService.setOverwriteImeIsActive(false);
+            }
+        } catch (RemoteException e) {
+             mEdgeGestureService = null;
+        }
     }
 
     /** {@inheritDoc} */
     public void onClick(DialogInterface dialog, int which) {
-        if (!(mAdapter.getItem(which) instanceof SilentModeTriStateAction)) {
-            dialog.dismiss();
-        }
         mAdapter.getItem(which).onPress();
     }
 
@@ -781,21 +904,29 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
 
             TextView statusView = (TextView) v.findViewById(R.id.status);
             final String status = getStatus();
+
+            setButtonRippleColor(context, v);
+
             if (!TextUtils.isEmpty(status)) {
                 statusView.setText(status);
+                statusView.setTextColor(mSecondaryTextColor);
             } else {
                 statusView.setVisibility(View.GONE);
             }
             if (mIcon != null) {
                 icon.setImageDrawable(mIcon);
+                icon.setColorFilter(mIconNormalColor, Mode.MULTIPLY);
                 icon.setScaleType(ScaleType.CENTER_CROP);
             } else if (mIconResId != 0) {
                 icon.setImageDrawable(context.getDrawable(mIconResId));
+                icon.setColorFilter(mIconNormalColor, Mode.MULTIPLY);
             }
             if (mMessage != null) {
                 messageView.setText(mMessage);
+                messageView.setTextColor(mTextColor);
             } else {
                 messageView.setText(mMessageResId);
+                messageView.setTextColor(mTextColor);
             }
 
             return v;
@@ -878,8 +1009,11 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             TextView statusView = (TextView) v.findViewById(R.id.status);
             final boolean enabled = isEnabled();
 
+            setButtonRippleColor(context, v);
+
             if (messageView != null) {
                 messageView.setText(mMessageResId);
+                messageView.setTextColor(mTextColor);
                 messageView.setEnabled(enabled);
             }
 
@@ -887,11 +1021,13 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             if (icon != null) {
                 icon.setImageDrawable(context.getDrawable(
                         (on ? mEnabledIconResId : mDisabledIconResid)));
+                icon.setColorFilter((on ? mIconEnabledSelectedColor : mIconNormalColor), Mode.MULTIPLY);
                 icon.setEnabled(enabled);
             }
 
             if (statusView != null) {
                 statusView.setText(on ? mEnabledStatusMessageResId : mDisabledStatusMessageResId);
+                statusView.setTextColor(mSecondaryTextColor);
                 statusView.setVisibility(View.VISIBLE);
                 statusView.setEnabled(enabled);
             }
@@ -932,7 +1068,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         }
     }
 
-    private class SilentModeToggleAction extends ToggleAction {
+    private final class SilentModeToggleAction extends ToggleAction {
         public SilentModeToggleAction() {
             super(R.drawable.ic_audio_vol_mute,
                     R.drawable.ic_audio_vol,
@@ -943,9 +1079,9 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
 
         void onToggle(boolean on) {
             if (on) {
-                mAudioManager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+                mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_SILENT);
             } else {
-                mAudioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+                mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_NORMAL);
             }
         }
 
@@ -958,9 +1094,10 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         }
     }
 
-    private static class SilentModeTriStateAction implements Action, View.OnClickListener {
+    private final class SilentModeTriStateAction implements Action, View.OnClickListener {
 
-        private final int[] ITEM_IDS = { R.id.option1, R.id.option2, R.id.option3 };
+        private final int[] ITEM_IDS = { R.id.option1, R.id.option2, R.id.option3, R.id.option4, R.id.option5 };
+        private final int[] IMAGE_VIEW_IDS = { R.id.option1_icon, R.id.option2_icon, R.id.option3_icon, R.id.option4_icon, R.id.option5_icon };
 
         private final AudioManager mAudioManager;
         private final Handler mHandler;
@@ -972,14 +1109,18 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             mContext = context;
         }
 
-        private int ringerModeToIndex(int ringerMode) {
-            // They just happen to coincide
-            return ringerMode;
-        }
-
         private int indexToRingerMode(int index) {
-            // They just happen to coincide
-            return index;
+            if (index == 2) {
+                return AudioManager.RINGER_MODE_SILENT;
+            }
+            if (index == 3) {
+                if (mHasVibrator) {
+                    return AudioManager.RINGER_MODE_VIBRATE;
+                } else {
+                    return AudioManager.RINGER_MODE_NORMAL;
+                }
+            }
+            return AudioManager.RINGER_MODE_NORMAL;
         }
 
         @Override
@@ -991,12 +1132,40 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 LayoutInflater inflater) {
             View v = inflater.inflate(R.layout.global_actions_silent_mode, parent, false);
 
-            int selectedIndex = ringerModeToIndex(mAudioManager.getRingerMode());
-            for (int i = 0; i < 3; i++) {
+            int ringerMode = mAudioManager.getRingerModeInternal();
+            int zenMode = Global.getInt(mContext.getContentResolver(), Global.ZEN_MODE, Global.ZEN_MODE_OFF);
+            int selectedIndex = 0;
+            if (zenMode != Global.ZEN_MODE_OFF) {
+                if (zenMode == Global.ZEN_MODE_NO_INTERRUPTIONS) {
+                    selectedIndex = 0;
+                } else if (zenMode == Global.ZEN_MODE_IMPORTANT_INTERRUPTIONS) {
+                    selectedIndex = 1;
+                }
+            } else if (ringerMode == AudioManager.RINGER_MODE_SILENT) {
+                selectedIndex = 2;
+            } else if (ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
+                selectedIndex = 3;
+            } else if (ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+                selectedIndex = 4;
+            }
+
+            for (int i = 0; i < ITEM_IDS.length; i++) {
                 View itemView = v.findViewById(ITEM_IDS[i]);
-                itemView.setSelected(selectedIndex == i);
+                View iv = v.findViewById(IMAGE_VIEW_IDS[i]);
+                // TODO dont hardcode 3 here
+                if (!mHasVibrator && i == 3) {
+                    itemView.setVisibility(View.GONE);
+                    continue;
+                }
+                iv.setSelected(selectedIndex == i);
+                if (selectedIndex == i) {
+                    ((ImageView)iv).setColorFilter(mIconEnabledSelectedColor, Mode.MULTIPLY);
+                } else {
+                    ((ImageView)iv).setColorFilter(mIconNormalColor, Mode.MULTIPLY);
+                }
                 // Set up click handler
                 itemView.setTag(i);
+                setSilentModeItemRippleColor(context, itemView);
                 itemView.setOnClickListener(this);
             }
             return v;
@@ -1024,7 +1193,26 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             if (!(v.getTag() instanceof Integer)) return;
 
             int index = (Integer) v.getTag();
-            mAudioManager.setRingerMode(indexToRingerMode(index));
+            if (index == 0 || index == 1) {
+                int zenMode = index == 0
+                        ? Global.ZEN_MODE_NO_INTERRUPTIONS
+                        : Global.ZEN_MODE_IMPORTANT_INTERRUPTIONS;
+                INotificationManager noMan = INotificationManager.Stub.asInterface(
+                        ServiceManager.getService(Context.NOTIFICATION_SERVICE));
+                try {
+                    noMan.setZenMode(zenMode, null, TAG);
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Unable to set zen mode", e);
+                }
+            } else {
+                Global.putInt(mContext.getContentResolver(), Global.ZEN_MODE, Global.ZEN_MODE_OFF);
+            }
+            // must be after zen mode!
+            if (index == 2 || index == 3 || index == 4) {
+                int ringerMode = indexToRingerMode(index);
+                mAudioManager.setRingerModeInternal(ringerMode);
+            }
+            mAdapter.notifyDataSetChanged();
             mHandler.sendEmptyMessageDelayed(MESSAGE_DISMISS, DIALOG_DISMISS_DELAY);
         }
     }
@@ -1053,10 +1241,12 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
         @Override
         public void onServiceStateChanged(ServiceState serviceState) {
-            if (!mHasTelephony) return;
+            if (!mHasTelephony || mAirplaneModeOn == null || mAdapter == null) return;
             final boolean inAirplaneMode = serviceState.getState() == ServiceState.STATE_POWER_OFF;
             mAirplaneState = inAirplaneMode ? ToggleAction.State.On : ToggleAction.State.Off;
-            mAirplaneModeOn.updateState(mAirplaneState);
+            if (mAirplaneModeOn != null) {
+                mAirplaneModeOn.updateState(mAirplaneState);
+            }
             mAdapter.notifyDataSetChanged();
         }
     };
@@ -1092,7 +1282,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 }
                 break;
             case MESSAGE_REFRESH:
-                refreshSilentMode();
                 mAdapter.notifyDataSetChanged();
                 break;
             case MESSAGE_SHOW:
@@ -1114,6 +1303,16 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         mAirplaneModeOn.updateState(mAirplaneState);
     }
 
+    private void onExpandedDesktopModeChanged() {
+        ContentResolver cr = mContext.getContentResolver();
+        String value = Settings.Global.getString(cr, Settings.Global.POLICY_CONTROL);
+        boolean expandedDesktopModeOn = "immersive.full=*".equals(value);
+        mExpandedDesktopState = expandedDesktopModeOn ? ToggleAction.State.On : ToggleAction.State.Off;
+        if (mExpandedDesktopModeOn != null) {
+            mExpandedDesktopModeOn.updateState(mExpandedDesktopState);
+        }
+    }
+
     /**
      * Change the airplane mode system setting
      */
@@ -1131,6 +1330,27 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         }
     }
 
+    private boolean getExpandedDesktopState(ContentResolver cr) {
+        String value = Settings.Global.getString(cr, Settings.Global.POLICY_CONTROL);
+        if ("immersive.full=*".equals(value)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * If not set till now get EdgeGestureService.
+     */
+    private IEdgeGestureService getEdgeGestureService() {
+        synchronized (mServiceAquireLock) {
+            if (mEdgeGestureService == null) {
+                mEdgeGestureService = IEdgeGestureService.Stub.asInterface(
+                            ServiceManager.getService("edgegestureservice"));
+            }
+            return mEdgeGestureService;
+        }
+    }
+
     private static final class GlobalActionsDialog extends Dialog implements DialogInterface {
         private final Context mContext;
         private final int mWindowTouchSlop;
@@ -1143,7 +1363,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         private boolean mCancelOnUp;
 
         public GlobalActionsDialog(Context context, AlertParams params) {
-            super(context, getDialogTheme(context));
+            super(context, com.android.internal.R.style.Theme_Material_Dialog_Dark);
             mContext = getContext();
             mAlert = new AlertController(mContext, this, getWindow());
             mAdapter = (MyAdapter) params.mAdapter;

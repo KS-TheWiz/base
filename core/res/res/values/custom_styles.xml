@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-     Copyright (C) 2014 The Android Open Source Project
+     Copyright (C) 2016 KS-TheWiz
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -36,4 +36,5 @@
         <item name="windowEnterAnimation">@anim/recent_screen_enter_left</item>
         <item name="windowExitAnimation">@anim/recent_screen_exit_left</item>
     </style>
+
 </resources>

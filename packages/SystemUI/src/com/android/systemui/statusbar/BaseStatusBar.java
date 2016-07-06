@@ -66,6 +66,7 @@ import android.os.UserManager;
 import android.provider.Settings;
 import android.service.dreams.DreamService;
 import android.service.dreams.IDreamManager;
+import android.service.gesture.EdgeGestureManager;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.NotificationListenerService.RankingMap;
 import android.service.notification.StatusBarNotification;
@@ -234,6 +235,8 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     private KeyguardManager mKeyguardManager;
     private LockPatternUtils mLockPatternUtils;
+
+    private EdgeGestureManager mEdgeGestureManager;
 
     // UI-specific methods
 
@@ -875,6 +878,12 @@ public abstract class BaseStatusBar extends SystemUI implements
             NotificationManager noMan =
                     (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
             noMan.notify(R.id.notification_hidden, note.build());
+        }
+    }
+
+    public void setOverwriteImeIsActive(boolean enabled) {
+        if (mEdgeGestureManager != null) {
+            mEdgeGestureManager.setOverwriteImeIsActive(enabled);
         }
     }
 
