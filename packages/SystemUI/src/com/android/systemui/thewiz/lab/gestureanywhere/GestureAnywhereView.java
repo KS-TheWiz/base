@@ -247,18 +247,18 @@ public class GestureAnywhereView extends TriggerOverlayView implements GestureOv
     /**
      * Disables home, recent and search in the navbar when showing this view
      */
-    private void disableNavButtons() {
-        mBar.disable(StatusBarManager.DISABLE_HOME
-                | StatusBarManager.DISABLE_RECENT
-                | StatusBarManager.DISABLE_SEARCH, true);
-    }
+//    private void disableNavButtons() {
+//        mBar.disable(StatusBarManager.DISABLE_HOME
+//                | StatusBarManager.DISABLE_RECENT
+//                | StatusBarManager.DISABLE_SEARCH, true);
+//    }
 
     /**
      * Re-enable home, recent, and search
      */
-    private void enableNavButtons() {
-        mBar.disable(0, true);
-    }
+//    private void enableNavButtons() {
+//        mBar.disable(0, true);
+//    }
 
     private void switchToState(State state) {
         switch (state) {
@@ -272,7 +272,7 @@ public class GestureAnywhereView extends TriggerOverlayView implements GestureOv
                 }
                 mContent.setVisibility(View.GONE);
                 mGestureView.setVisibility(View.GONE);
-                enableNavButtons();
+//                enableNavButtons();
                 break;
             case Expanded:
                 mGestureView.setVisibility(View.VISIBLE);
@@ -283,7 +283,7 @@ public class GestureAnywhereView extends TriggerOverlayView implements GestureOv
                 expandFromTriggerRegion();
                 mContent.setVisibility(View.VISIBLE);
                 mContent.startAnimation(mSlideIn);
-                disableNavButtons();
+//                disableNavButtons();
                 break;
             case Closing:
                 mContent.startAnimation(mSlideOut);
