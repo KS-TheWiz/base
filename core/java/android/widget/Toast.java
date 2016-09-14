@@ -21,6 +21,7 @@ import android.annotation.IntDef;
 import android.annotation.StringRes;
 import android.app.INotificationManager;
 import android.app.ITransientNotification;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -268,7 +269,8 @@ public class Toast {
         View v = inflate.inflate(com.android.internal.R.layout.transient_notification, null);
         TextView tv = (TextView)v.findViewById(com.android.internal.R.id.message);
         tv.setText(text);
-        
+        tv.setTextColor(Settings.System.getInt(
+            context.getContentResolver(), Settings.System.TOAST_COLOR_TEXT, 0xffffffff));
         result.mNextView = v;
         result.mDuration = duration;
 
