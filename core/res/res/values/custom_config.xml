@@ -65,4 +65,23 @@
     needs to be set to false, to prevent the doze notifications from being light -->
     <bool name="config_invert_colors_on_doze">true</bool>
 
+    <!-- status message in phone options dialog for when AppCircleBar is on -->
+    <string name="global_actions_appcirclebar_mode_on_status">AppCircleBar is ON</string>
+    <!-- status message in phone options dialog for when AppCircleBar is off -->
+    <string name="global_actions_appcirclebar_mode_off_status">AppCircleBar is OFF</string>
+
+    <!-- status message in phone options dialog for when AppSideBar is on -->
+    <string name="global_actions_appsidebar_mode_on_status">AppSideBar is ON</string>
+    <!-- status message in phone options dialog for when AppSideBar is off -->
+    <string name="global_actions_appsidebar_mode_off_status">AppSideBar is OFF</string>
+
+    <!-- status message in phone options dialog for when pie is on -->
+    <string name="global_actions_gesture_anywhere_mode_on_status">Gesture Anywhere is ON</string>
+    <!-- status message in phone options dialog for when pie is off -->
+    <string name="global_actions_gesture_anywhere_mode_off_status">Gesture Anywhere is OFF</string>
+
+    <string name="global_actions_toggle_appcirclebar_mode">AppCircleBar</string>
+    <string name="global_actions_toggle_appsidebar_mode">AppSideBar</string>
+    <string name="global_actions_toggle_gesture_anywhere_mode">Gesture Anywhere</string>
+
 </resources>

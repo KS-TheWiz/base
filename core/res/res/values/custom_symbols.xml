@@ -113,6 +113,24 @@
   <java-symbol type="color" name="global_actions_ripple_color" />
   <java-symbol type="color" name="global_actions_text_color" />
 
+  <!-- AppCircleBar controls -->
+  <java-symbol type="string" name="global_actions_toggle_appcirclebar_mode" />
+  <java-symbol type="string" name="global_actions_appcirclebar_mode_on_status" />
+  <java-symbol type="string" name="global_actions_appcirclebar_mode_off_status" />
+  <java-symbol type="drawable" name="ic_lock_appcirclebar" />
+
+  <!-- AppSideBar controls -->
+  <java-symbol type="string" name="global_actions_toggle_appsidebar_mode" />
+  <java-symbol type="string" name="global_actions_appsidebar_mode_on_status" />
+  <java-symbol type="string" name="global_actions_appsidebar_mode_off_status" />
+  <java-symbol type="drawable" name="ic_lock_appsidebar" />
+
+  <!-- Gesture Anywhere controls -->
+  <java-symbol type="string" name="global_actions_toggle_gesture_anywhere_mode" />
+  <java-symbol type="string" name="global_actions_gesture_anywhere_mode_on_status" />
+  <java-symbol type="string" name="global_actions_gesture_anywhere_mode_off_status" />
+  <java-symbol type="drawable" name="ic_lock_gestures" />
+
   <!-- Package Manager -->
   <java-symbol type="array" name="config_disabledComponents" />
 

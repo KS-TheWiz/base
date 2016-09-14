@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2013 SlimRoms Project
+* Copyright (C) 2016 KS-TheWiz
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -27,6 +28,9 @@ public class PowerMenuConstants {
     public static final String ACTION_EXPANDED_DESKTOP     = "**expanded_desktop**";
     public static final String ACTION_SCREENSHOT           = "**screenshot**";
     public static final String ACTION_SOUND                = "**sound**";
+    public static final String ACTION_APP_CIRCLE_BAR       = "**appcirclebar**";
+    public static final String ACTION_APP_SIDEBAR          = "**appsidebar**";
+    public static final String ACTION_GESTURE_ANYWHERE     = "**gesture_anywhere**";
 
     // no action
     public static final String ACTION_NULL            = "**null**";
